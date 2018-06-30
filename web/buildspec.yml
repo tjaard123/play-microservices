@@ -1,13 +1,12 @@
-version: 0.1
+version: 0.2
 phases:
-    install:
-        commands:
-            - echo Installing source NPM dependencies...
-            - npm install
-    build:
-        commands:
-            - echo Build started on `date`
-            - npm run build
+  install:
+    commands:
+      - cd web
+      - npm install
+  build:
+    commands:
+      - npm run build
 artifacts:
-    files:
-        - 'web/dist/**/*'
+  files:
+      - web/dist/web/**/*
