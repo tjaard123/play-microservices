@@ -1,0 +1,22 @@
+version: 0.2
+
+env:
+  variables:
+    REPOSITORY_URI: "048310089526.dkr.ecr.eu-west-1.amazonaws.com/afgri"
+
+phases:
+  install:
+    commands:
+      - cd api
+      - dotnet restore
+  pre_build:
+    commands:
+      - $(aws ecr get-login --no-include-email --region eu-west-1)
+  build:
+    commands:
+      - dotnet publish -c Release -o dist
+      - docker build -t afgri .
+      - docker tag afgri:latest $REPOSITORY_URI:latest
+  post_build:
+    commands:
+      - docker push $REPOSITORY_URI:latest
