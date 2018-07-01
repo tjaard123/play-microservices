@@ -1,43 +1,45 @@
-# Web (Angular + Nginx)
+# API (.NET Core & Docker)
 
-Use the albine (minimal) nginx linux docker and simply copy the nginx config and dist folder created by running `ng build`:
+Use the aspnetcore docker and simply copy the dist folder created by a dotnet publish:
 
 ```docker
-FROM nginx:alpine
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY dist/web /usr/share/nginx/html
-```
-
-Run it like this:
-
-```
-docker build -t play-web .
-docker run -p 3000:80 --rm play-web
-```
-
-* Visit site on host via port 3000
-* --rm is to automatically remove the container when it exits
-
-To get a shell:
-```
-docker exec -it <container> sh
+FROM microsoft/aspnetcore:2.0
+WORKDIR /app
+COPY /dist .
+ENTRYPOINT ["dotnet", "aspnetapp.dll"]
 ```
 
 # AWS CodeBuild
 
-AWS Codebuild executes a build on trigger using the buildspec.yml file. Publishing the artefacts to S3
+AWS Codebuild executes a build using the buildspec.yml file. Publishing the built docker image to ECR:
 
 ```yml
 version: 0.2
+
+env:
+  variables:
+    REPOSITORY_URI: "<AWS-ACCOUNT>.dkr.ecr.eu-west-1.amazonaws.com/<IMAGE>"
+
 phases:
   install:
     commands:
-      - cd web
-      - npm install
+      - cd api
+      - dotnet restore
+  pre_build:
+    commands:
+      - $(aws ecr get-login --no-include-email --region eu-west-1)
   build:
     commands:
-      - npm run build
-artifacts:
-  files:
-      - web/dist/web/**/*
+      - dotnet publish -c Release -o dist
+      - docker build -t afgri .
+      - docker tag afgri:latest $REPOSITORY_URI:latest
+  post_build:
+    commands:
+      - docker push $REPOSITORY_URI:latest
 ```
+
+Checklist:
+* Setup a repository and provide env variable above
+* .NET Core CodeBuild image
+* CodeBuild role with full access to ECR
+* Allow CodeBuild access to ECR with policy on ECR
